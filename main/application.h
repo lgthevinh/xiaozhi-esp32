@@ -179,7 +179,7 @@ private:
     void CheckAssetsVersion();
     void CheckNewVersion();
     void InitializeProtocol();
-    void ShowActivationCode(const std::string& code, const std::string& message);
+    void ProvisionDevice();
     void SetListeningMode(ListeningMode mode);
     ListeningMode GetDefaultListeningMode() const;
     

@@ -1,4 +1,6 @@
 #include "application.h"
+
+#include "agp/provision.h"
 #include "assets.h"
 #include "assets/lang_config.h"
 #include "audio_codec.h"
@@ -359,6 +361,9 @@ void Application::ActivationTask() {
     // Check for new firmware version
     CheckNewVersion();
 
+    // Claim this device to an AGP organization
+    ProvisionDevice();
+
     // Initialize the protocol
     InitializeProtocol();
 
@@ -683,27 +688,50 @@ void Application::InitializeProtocol() {
     protocol_->Start();
 }
 
-void Application::ShowActivationCode(const std::string& code, const std::string& message) {
-    struct digit_sound {
-        char digit;
-        const std::string_view& sound;
-    };
-    static const std::array<digit_sound, 10> digit_sounds{
-        {digit_sound{'0', Lang::Sounds::OGG_0}, digit_sound{'1', Lang::Sounds::OGG_1},
-         digit_sound{'2', Lang::Sounds::OGG_2}, digit_sound{'3', Lang::Sounds::OGG_3},
-         digit_sound{'4', Lang::Sounds::OGG_4}, digit_sound{'5', Lang::Sounds::OGG_5},
-         digit_sound{'6', Lang::Sounds::OGG_6}, digit_sound{'7', Lang::Sounds::OGG_7},
-         digit_sound{'8', Lang::Sounds::OGG_8}, digit_sound{'9', Lang::Sounds::OGG_9}}};
+void Application::ProvisionDevice() {
+    Provision provision;
+    if (provision.IsProvisioned()) {
+        return;
+    }
 
-    // This sentence uses 9KB of SRAM, so we need to wait for it to finish
-    Alert(Lang::Strings::ACTIVATION, message.c_str(), "link", Lang::Sounds::OGG_ACTIVATION);
+    const int MAX_RETRY = 10;
+    int retry_count = 0;
+    int retry_delay = 10;
+    std::string shown_code;
 
-    for (const auto& digit : code) {
-        auto it = std::find_if(digit_sounds.begin(), digit_sounds.end(),
-                               [digit](const digit_sound& ds) { return ds.digit == digit; });
-        if (it != digit_sounds.end()) {
-            audio_service_.PlaySound(it->sound);
+    auto display = Board::GetInstance().GetDisplay();
+    display->SetStatus(Lang::Strings::ACTIVATION);
+
+    while (true) {
+        esp_err_t err = provision.Claim();
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "Device provisioned");
+            return;
         }
+
+        if (err == ESP_ERR_TIMEOUT) {
+            retry_count = 0;
+            retry_delay = 10;
+            // A rotated code has to be put back in front of the user.
+            if (provision.GetCode() != shown_code) {
+                shown_code = provision.GetCode();
+                Alert(Lang::Strings::ACTIVATION, shown_code.c_str(), "link",
+                      Lang::Sounds::OGG_ACTIVATION);
+            }
+            vTaskDelay(pdMS_TO_TICKS(5000));
+            continue;
+        }
+
+        retry_count++;
+        if (retry_count >= MAX_RETRY) {
+            ESP_LOGE(TAG, "Too many retries, exit provisioning");
+            return;
+        }
+
+        ESP_LOGW(TAG, "Claim failed, retry in %d seconds (%d/%d)", retry_delay, retry_count,
+                 MAX_RETRY);
+        vTaskDelay(pdMS_TO_TICKS(retry_delay * 1000));
+        retry_delay *= 2;
     }
 }
 

@@ -21,6 +21,7 @@ private:
     std::string thing_id_;
 
     std::string BuildPayload();
+    void StoreCredential(const char* thing_id, const char* credential);
     esp_err_t HandleResponse(const std::string& body);
 };
 

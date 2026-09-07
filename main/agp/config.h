@@ -9,6 +9,7 @@
 
 #define AGP_CLAIM_CODE_PATH "things/claim-code"
 #define AGP_FIRMWARE_CHECK_PATH "firmware/check"
+#define AGP_AUDIO_WS_PATH "ws/thing/audio"
 
 // The wifi provisioning portal can override the compiled-in base URL.
 inline std::string AgpBaseUrl() {
@@ -29,6 +30,16 @@ inline std::string AgpUrl(const char* path) {
         url += '/';
     }
     return url + path;
+}
+
+inline std::string AgpWsUrl() {
+    std::string url = AgpUrl(AGP_AUDIO_WS_PATH);
+    if (url.rfind("https://", 0) == 0) {
+        url.replace(0, 5, "wss");
+    } else if (url.rfind("http://", 0) == 0) {
+        url.replace(0, 4, "ws");
+    }
+    return url;
 }
 
 #endif  // _AGP_CONFIG_H_

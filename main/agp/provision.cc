@@ -35,6 +35,19 @@ std::string Provision::BuildPayload() {
     return json;
 }
 
+void Provision::StoreCredential(const char* thing_id, const char* credential) {
+    Settings agp(AGP_SETTINGS_NS, true);
+    agp.SetString("thing_id", thing_id);
+    agp.SetString("credential", credential);
+    thing_id_ = thing_id;
+
+    // WebsocketProtocol reads these; the scheme has a space so it is sent as-is
+    // instead of being wrapped in "Bearer ".
+    Settings websocket("websocket", true);
+    websocket.SetString("url", AgpWsUrl());
+    websocket.SetString("token", std::string("ThingCredential ") + thing_id + "." + credential);
+}
+
 esp_err_t Provision::HandleResponse(const std::string& body) {
     cJSON* root = cJSON_Parse(body.c_str());
     if (root == NULL) {
@@ -45,10 +58,7 @@ esp_err_t Provision::HandleResponse(const std::string& body) {
     cJSON* thing_id = cJSON_GetObjectItem(root, "thingId");
     cJSON* credential = cJSON_GetObjectItem(root, "credential");
     if (cJSON_IsString(thing_id) && cJSON_IsString(credential)) {
-        Settings settings(AGP_SETTINGS_NS, true);
-        settings.SetString("thing_id", thing_id->valuestring);
-        settings.SetString("credential", credential->valuestring);
-        thing_id_ = thing_id->valuestring;
+        StoreCredential(thing_id->valuestring, credential->valuestring);
         code_.clear();
         ESP_LOGI(TAG, "Claimed as thing %s", thing_id_.c_str());
         cJSON_Delete(root);
@@ -97,6 +107,7 @@ esp_err_t Provision::Claim() {
     auto status_code = http->GetStatusCode();
     if (status_code == 202) {
         http->Close();
+        ESP_LOGI(TAG, "Waiting to be claimed with code %s", code_.c_str());
         return ESP_ERR_TIMEOUT;
     }
     if (status_code == 404) {
