@@ -1,10 +1,19 @@
-menu "Xiaozhi Assistant"
+menu "AGP Device Config"
 
 config OTA_URL
-    string "Default OTA URL"
-    default "https://api.tenclass.net/xiaozhi/ota/"
+    string "AGP API base URL"
+    default "https://api.agp.io.vn/"
     help
-        The application will access this URL to check for new firmwares and server address.
+        Base URL of the AGP API. Provisioning and firmware routes are appended to it.
+
+config PRODUCT_ID
+    string "AGP product id"
+    default ""
+    help
+        Identifies the hardware model to AGP: 12 uppercase letters or digits,
+        3 vendor + 3 family + 6 serial. Must match a product registered in the
+        AGP catalog, or claiming is refused. Empty means this build cannot be
+        provisioned.
 
 choice
     prompt "Flash Assets"
