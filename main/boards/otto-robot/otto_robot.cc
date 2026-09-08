@@ -247,14 +247,15 @@ private:
     }
 
     void InitializeButtons() {
-        boot_button_.OnClick([this]() {
+        boot_button_.OnPressDown([this]() {
             auto& app = Application::GetInstance();
             if (app.GetDeviceState() == kDeviceStateStarting) {
                 EnterWifiConfigMode();
                 return;
             }
-            app.ToggleChatState();
+            app.StartListening();
         });
+        boot_button_.OnPressUp([this]() { Application::GetInstance().StopListening(); });
     }
 
     void InitializeOttoController() { ::InitializeOttoController(hw_config_); }
