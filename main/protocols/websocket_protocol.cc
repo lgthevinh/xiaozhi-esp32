@@ -1,4 +1,5 @@
 #include "websocket_protocol.h"
+#include "agp/config.h"
 #include "application.h"
 #include "board.h"
 #include "settings.h"
@@ -79,6 +80,13 @@ void WebsocketProtocol::CloseAudioChannel(bool send_goodbye) {
 bool WebsocketProtocol::OpenAudioChannel() {
     Settings settings("websocket", false);
     std::string url = settings.GetString("url");
+    if (url.empty()) {
+        url = AgpWsUrl();
+    }
+    if (url.empty()) {
+        ESP_LOGE(TAG, "No websocket url stored and no AGP base url configured");
+        return false;
+    }
     std::string token = settings.GetString("token");
     int version = settings.GetInt("version");
     if (version != 0) {
