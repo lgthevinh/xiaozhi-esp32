@@ -30,7 +30,7 @@ SAFE_REPORTED_IDENTIFIER = re.compile(r"^[a-z0-9][a-z0-9.-]*$")
 SAFE_JOB_ID = re.compile(r"^[a-z0-9][a-z0-9.-]*$")
 SAFE_WAKE_WORD = re.compile(r"^(?:disabled|nihaoxiaozhi|wn9[sl]?_[a-z0-9_]+)$")
 ARTIFACTS = {
-    "ota": Path("build/xiaozhi.bin"),
+    "ota": Path("build/agp-esp32.bin"),
     "full": Path("build/merged-binary.bin"),
 }
 UPLOAD_MAX_ATTEMPTS = 4
