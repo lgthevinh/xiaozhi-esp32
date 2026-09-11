@@ -546,7 +546,31 @@ void Application::InitializeProtocol() {
     });
 
     protocol_->OnIncomingJson([this, display](const cJSON* root) {
-        // Parse JSON data
+        auto state = cJSON_GetObjectItem(root, "state");
+        if (!cJSON_IsString(state)) {
+            ESP_LOGW(TAG, "Incoming JSON message has no state");
+            return;
+        }
+        if (strcmp(state->valuestring, "start") == 0) {
+            Schedule([this]() {
+                aborted_ = false;
+                SetDeviceState(kDeviceStateSpeaking);
+            });
+        } else if (strcmp(state->valuestring, "stop") == 0) {
+            Schedule([this]() {
+                if (GetDeviceState() == kDeviceStateSpeaking) {
+                    if (listening_mode_ == kListeningModeManualStop) {
+                        SetDeviceState(kDeviceStateIdle);
+                    } else {
+                        SetDeviceState(kDeviceStateListening);
+                    }
+                }
+            });
+        } else {
+            ESP_LOGW(TAG, "Unknown message state: %s", state->valuestring);
+        }
+
+#if 0  // Typed messages the AGP audio gateway does not send yet.
         auto type = cJSON_GetObjectItem(root, "type");
         if (!cJSON_IsString(type)) {
             ESP_LOGW(TAG, "Incoming JSON message has no type");
@@ -590,22 +614,7 @@ void Application::InitializeProtocol() {
             if (!cJSON_IsString(state)) {
                 return;
             }
-            if (strcmp(state->valuestring, "start") == 0) {
-                Schedule([this]() {
-                    aborted_ = false;
-                    SetDeviceState(kDeviceStateSpeaking);
-                });
-            } else if (strcmp(state->valuestring, "stop") == 0) {
-                Schedule([this]() {
-                    if (GetDeviceState() == kDeviceStateSpeaking) {
-                        if (listening_mode_ == kListeningModeManualStop) {
-                            SetDeviceState(kDeviceStateIdle);
-                        } else {
-                            SetDeviceState(kDeviceStateListening);
-                        }
-                    }
-                });
-            } else if (strcmp(state->valuestring, "sentence_start") == 0) {
+            if (strcmp(state->valuestring, "sentence_start") == 0) {
                 auto text = cJSON_GetObjectItem(root, "text");
                 if (cJSON_IsString(text)) {
                     std::vector<TextGlyph> glyphs;
@@ -685,6 +694,7 @@ void Application::InitializeProtocol() {
         } else {
             ESP_LOGW(TAG, "Unknown message type: %s", type->valuestring);
         }
+#endif
     });
 
     protocol_->Start();

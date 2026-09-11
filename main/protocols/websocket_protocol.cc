@@ -149,9 +149,9 @@ bool WebsocketProtocol::OpenAudioChannel() {
         } else {
             // Parse JSON data
             auto root = cJSON_ParseWithLength(data, len);
-            auto type = cJSON_GetObjectItem(root, "type");
-            if (cJSON_IsString(type)) {
-                if (strcmp(type->valuestring, "hello") == 0) {
+            auto state = cJSON_GetObjectItem(root, "state");
+            if (cJSON_IsString(state)) {
+                if (strcmp(state->valuestring, "init") == 0) {
                     ParseServerHello(root);
                 } else {
                     if (on_incoming_json_ != nullptr) {
@@ -159,7 +159,7 @@ bool WebsocketProtocol::OpenAudioChannel() {
                     }
                 }
             } else {
-                ESP_LOGE(TAG, "Missing message type, data: %s", std::string(data, len).c_str());
+                ESP_LOGE(TAG, "Missing message state, data: %s", std::string(data, len).c_str());
             }
             cJSON_Delete(root);
         }
@@ -180,11 +180,11 @@ bool WebsocketProtocol::OpenAudioChannel() {
         return false;
     }
 
-    // Send hello message to describe the client
-    auto message = GetHelloMessage();
-    if (!SendText(message)) {
-        return false;
-    }
+    // Disabled: the AGP audio gateway has no client hello; restore when it negotiates features.
+    // auto message = GetHelloMessage();
+    // if (!SendText(message)) {
+    //     return false;
+    // }
 
     // Wait for server hello
     EventBits_t bits =
@@ -231,8 +231,8 @@ std::string WebsocketProtocol::GetHelloMessage() {
 
 void WebsocketProtocol::ParseServerHello(const cJSON* root) {
     auto transport = cJSON_GetObjectItem(root, "transport");
-    if (transport == nullptr || strcmp(transport->valuestring, "websocket") != 0) {
-        ESP_LOGE(TAG, "Unsupported transport: %s", transport->valuestring);
+    if (!cJSON_IsString(transport) || strcmp(transport->valuestring, "websocket") != 0) {
+        ESP_LOGE(TAG, "Unsupported transport");
         return;
     }
 

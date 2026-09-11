@@ -55,46 +55,46 @@ void Protocol::SetError(const std::string& message) {
     }
 }
 
+// Disabled fields (reason, mode) and messages (detect, mcp) have no AGP gateway counterpart yet.
 void Protocol::SendAbortSpeaking(AbortReason reason) {
-    std::string message = "{\"session_id\":\"" + session_id_ + "\",\"type\":\"abort\"";
-    if (reason == kAbortReasonWakeWordDetected) {
-        message += ",\"reason\":\"wake_word_detected\"";
-    }
+    std::string message = "{\"session_id\":\"" + session_id_ + "\",\"state\":\"abort\"";
+    // if (reason == kAbortReasonWakeWordDetected) {
+    //     message += ",\"reason\":\"wake_word_detected\"";
+    // }
     message += "}";
     SendText(message);
 }
 
 void Protocol::SendWakeWordDetected(const std::string& wake_word) {
-    std::string json = "{\"session_id\":\"" + session_id_ +
-                       "\",\"type\":\"listen\",\"state\":\"detect\",\"text\":\"" + wake_word +
-                       "\"}";
-    SendText(json);
+    // std::string json = "{\"session_id\":\"" + session_id_ +
+    //                    "\",\"type\":\"listen\",\"state\":\"detect\",\"text\":\"" + wake_word +
+    //                    "\"}";
+    // SendText(json);
 }
 
 void Protocol::SendStartListening(ListeningMode mode) {
-    std::string message = "{\"session_id\":\"" + session_id_ + "\"";
-    message += ",\"type\":\"listen\",\"state\":\"start\"";
-    if (mode == kListeningModeRealtime) {
-        message += ",\"mode\":\"realtime\"";
-    } else if (mode == kListeningModeAutoStop) {
-        message += ",\"mode\":\"auto\"";
-    } else {
-        message += ",\"mode\":\"manual\"";
-    }
+    std::string message = "{\"session_id\":\"" + session_id_ + "\",\"state\":\"ready_receive\"";
+    // if (mode == kListeningModeRealtime) {
+    //     message += ",\"mode\":\"realtime\"";
+    // } else if (mode == kListeningModeAutoStop) {
+    //     message += ",\"mode\":\"auto\"";
+    // } else {
+    //     message += ",\"mode\":\"manual\"";
+    // }
     message += "}";
     SendText(message);
 }
 
 void Protocol::SendStopListening() {
     std::string message =
-        "{\"session_id\":\"" + session_id_ + "\",\"type\":\"listen\",\"state\":\"stop\"}";
+        "{\"session_id\":\"" + session_id_ + "\",\"state\":\"stop_receive\"}";
     SendText(message);
 }
 
 void Protocol::SendMcpMessage(const std::string& payload) {
-    std::string message =
-        "{\"session_id\":\"" + session_id_ + "\",\"type\":\"mcp\",\"payload\":" + payload + "}";
-    SendText(message);
+    // std::string message =
+    //     "{\"session_id\":\"" + session_id_ + "\",\"type\":\"mcp\",\"payload\":" + payload + "}";
+    // SendText(message);
 }
 
 bool Protocol::IsTimeout() const {
