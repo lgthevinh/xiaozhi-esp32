@@ -6,6 +6,7 @@
 #include "system_info.h"
 
 #include <esp_log.h>
+#include <esp_timer.h>
 #include <arpa/inet.h>
 #include <cJSON.h>
 #include <cstring>
@@ -151,7 +152,7 @@ bool WebsocketProtocol::OpenAudioChannel() {
             auto root = cJSON_ParseWithLength(data, len);
             auto state = cJSON_GetObjectItem(root, "state");
             if (cJSON_IsString(state)) {
-                if (strcmp(state->valuestring, "init") == 0) {
+                if (strcmp(state->valuestring, "syn") == 0) {
                     ParseServerHello(root);
                 } else {
                     if (on_incoming_json_ != nullptr) {
@@ -196,6 +197,14 @@ bool WebsocketProtocol::OpenAudioChannel() {
         return false;
     }
 
+    std::string syn_ack = "{\"session_id\":\"" + session_id_ +
+                          "\",\"state\":\"syn_ack\",\"echo_server_timestamp\":" +
+                          std::to_string(server_timestamp_) +
+                          ",\"client_timestamp\":" + std::to_string(syn_received_ms_) + "}";
+    if (!SendText(syn_ack)) {
+        return false;
+    }
+
     if (on_audio_channel_opened_ != nullptr) {
         on_audio_channel_opened_();
     }
@@ -230,6 +239,8 @@ std::string WebsocketProtocol::GetHelloMessage() {
 }
 
 void WebsocketProtocol::ParseServerHello(const cJSON* root) {
+    syn_received_ms_ = esp_timer_get_time() / 1000;
+
     auto transport = cJSON_GetObjectItem(root, "transport");
     if (!cJSON_IsString(transport) || strcmp(transport->valuestring, "websocket") != 0) {
         ESP_LOGE(TAG, "Unsupported transport");
@@ -237,10 +248,15 @@ void WebsocketProtocol::ParseServerHello(const cJSON* root) {
     }
 
     auto session_id = cJSON_GetObjectItem(root, "session_id");
-    if (cJSON_IsString(session_id)) {
-        session_id_ = session_id->valuestring;
-        ESP_LOGI(TAG, "Session ID: %s", session_id_.c_str());
+    auto server_timestamp = cJSON_GetObjectItem(root, "server_timestamp");
+    if (!cJSON_IsString(session_id) || !cJSON_IsNumber(server_timestamp)) {
+        ESP_LOGE(TAG, "syn missing session_id or server_timestamp");
+        return;
     }
+    session_id_ = session_id->valuestring;
+    // valueint clamps to INT_MAX; epoch ms needs the double.
+    server_timestamp_ = static_cast<int64_t>(server_timestamp->valuedouble);
+    ESP_LOGI(TAG, "Session ID: %s", session_id_.c_str());
 
     auto audio_params = cJSON_GetObjectItem(root, "audio_params");
     if (cJSON_IsObject(audio_params)) {
