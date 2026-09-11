@@ -15,10 +15,12 @@
 
 #include <driver/gpio.h>
 #include <esp_log.h>
+#include <esp_netif_sntp.h>
 #include <arpa/inet.h>
 #include <cJSON.h>
 #include <cstring>
 #include <limits>
+#include <time.h>
 
 #define TAG "Application"
 
@@ -287,6 +289,17 @@ void Application::Run() {
 
 void Application::HandleNetworkConnectedEvent() {
     ESP_LOGI(TAG, "Network connected");
+
+    // lwIP SNTP survives reconnects and resyncs hourly; a second init only errors.
+    static bool sntp_started = false;
+    if (!sntp_started) {
+        // ponytail: fixed Vietnam timezone, move to per-thing config when devices ship elsewhere
+        setenv("TZ", "ICT-7", 1);
+        tzset();
+        esp_sntp_config_t sntp_config = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
+        sntp_started = esp_netif_sntp_init(&sntp_config) == ESP_OK;
+    }
+
     auto state = GetDeviceState();
 
     if (state == kDeviceStateStarting || state == kDeviceStateWifiConfiguring) {
